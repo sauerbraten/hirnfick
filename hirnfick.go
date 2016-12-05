@@ -31,8 +31,7 @@ func main() {
 
 	// read & execute tokens
 	for script.HasRemaining() {
-		instr := script.NextInstruction(m.GetByte())
-		switch instr {
+		switch script.NextInstruction(m.GetByte()) {
 		case '>':
 			m.IncrAddr()
 		case '<':

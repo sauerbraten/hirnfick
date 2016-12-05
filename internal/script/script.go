@@ -1,7 +1,6 @@
 package script
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 )
@@ -12,7 +11,8 @@ type Script struct {
 }
 
 func New(input io.Reader) (*Script, error) {
-	content, err := ioutil.ReadAll(input)
+	cleanInput := &Cleaner{input}
+	content, err := ioutil.ReadAll(cleanInput)
 	if err != nil {
 		return nil, err
 	}
@@ -27,49 +27,38 @@ func (s *Script) HasRemaining() bool {
 func (s *Script) NextInstruction(current byte) byte {
 	token := s.content[s.pos]
 
-	switch token {
-	case '[':
-		if current == 0x00 {
-			s.pos = s.findMatchingClosingBracket(s.pos) + 1
-		} else {
-			s.pos++
-		}
-		return s.NextInstruction(current)
+	if token == '[' && current == 0x00 {
+		s.jumpToClosingBracket()
+	}
 
-	case ']':
-		if current != 0x00 {
-			s.pos = s.findMatchingOpeningBracket(s.pos) + 1
-		} else {
-			s.pos++
-		}
-		return s.NextInstruction(current)
+	if token == ']' && current != 0x00 {
+		s.jumpToOpeningBracket()
+	}
 
-	default:
+	s.pos++
+	return token
+}
+
+func (s *Script) jumpToClosingBracket() {
+	for depth := 1; depth > 0; {
 		s.pos++
-		return token
+		switch s.content[s.pos] {
+		case '[':
+			depth++
+		case ']':
+			depth--
+		}
 	}
 }
 
-// finds the matching closing bracket to the right
-func (s *Script) findMatchingClosingBracket(pos int) int {
-	nextClosing := pos + 1 + bytes.IndexByte(s.content[pos+1:], ']')
-	nextOpening := pos + 1 + bytes.IndexByte(s.content[pos+1:], '[')
-
-	if nextClosing < nextOpening {
-		return nextClosing
+func (s *Script) jumpToOpeningBracket() {
+	for depth := 1; depth > 0; {
+		s.pos--
+		switch s.content[s.pos] {
+		case ']':
+			depth++
+		case '[':
+			depth--
+		}
 	}
-
-	return s.findMatchingClosingBracket(s.findMatchingClosingBracket(nextOpening))
-}
-
-// finds the matching opening bracket to the left
-func (s *Script) findMatchingOpeningBracket(pos int) int {
-	nextOpening := bytes.LastIndexByte(s.content[:pos], '[')
-	nextClosing := bytes.LastIndexByte(s.content[:pos], ']')
-
-	if nextOpening > nextClosing {
-		return nextOpening
-	}
-
-	return s.findMatchingOpeningBracket(s.findMatchingOpeningBracket(nextClosing))
 }
