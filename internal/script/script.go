@@ -11,7 +11,7 @@ type Script struct {
 }
 
 func New(input io.Reader) (*Script, error) {
-	cleanInput := &Cleaner{input}
+	cleanInput := &cleaner{input}
 	content, err := ioutil.ReadAll(cleanInput)
 	if err != nil {
 		return nil, err
